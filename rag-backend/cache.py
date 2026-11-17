@@ -1,6 +1,7 @@
 import os
 import json
 import faiss
+import re
 from config import CACHE_DIR, EMBEDDING_MODEL, WINDOW_SEC, OVERLAP_SEC
 
 os.makedirs(CACHE_DIR, exist_ok=True)
@@ -8,7 +9,17 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 # In-memory cache: cache_key -> (chunks, index)
 video_cache = {}
 
+# YouTube ID pattern: 11 characters from A-Z, a-z, 0-9, _, -
+VIDEO_ID_PATTERN = re.compile(r"[A-Za-z0-9_-]{11}")
+
+def _validate_video_id(video_id: str) -> str:
+    """Validate video_id format and reject path traversal attempts."""
+    if not VIDEO_ID_PATTERN.fullmatch(video_id):
+        raise ValueError("Invalid video_id format. Must be 11 characters from A-Z, a-z, 0-9, _, -")
+    return video_id
+
 def get_cache_key(video_id: str, model_name: str | None = None) -> str:
+    _validate_video_id(video_id)
     if model_name is None:
         model_name = EMBEDDING_MODEL
     safe_model = str(model_name).replace("/", "_").replace("\\", "_")
