@@ -1,3 +1,4 @@
+const INITIAL_GREETING = "Hi! Ask me anything about this video and I'll answer using its transcript.";
 let isSending = false;
 const indexedVideos = new Set();
 
@@ -46,6 +47,14 @@ function removeWidget() {
   isSending = false;
 }
 
+function clearChat() {
+  if (isSending) return;
+  const messagesDiv = document.getElementById("yt-doubt-messages");
+  if (!messagesDiv) return;
+  messagesDiv.innerHTML = "";
+  addMessage(INITIAL_GREETING, "bot");
+}
+
 function closeChatPanel() {
   const panel = document.getElementById("yt-doubt-panel");
   if (!panel?.classList.contains("yt-doubt-open")) return;
@@ -79,7 +88,10 @@ function createChatWidget() {
   panel.innerHTML = `
     <div id="yt-doubt-header">
       <span>Ask about this video</span>
-      <button id="yt-doubt-close" type="button" aria-label="Close chat">✕</button>
+      <div id="yt-doubt-header-actions">
+        <button id="yt-doubt-clear" type="button" aria-label="Clear chat">Clear</button>
+        <button id="yt-doubt-close" type="button" aria-label="Close chat">✕</button>
+      </div>
     </div>
     <div id="yt-doubt-messages" role="log" aria-label="Chat messages" aria-live="polite"></div>
     <div id="yt-doubt-input-row">
@@ -89,7 +101,7 @@ function createChatWidget() {
   `;
   document.body.appendChild(panel);
 
-  addMessage("Hi! Ask me anything about this video and I'll answer using its transcript.", "bot");
+  addMessage(INITIAL_GREETING, "bot");
 
   button.addEventListener("click", () => {
     if (panel.classList.contains("yt-doubt-open")) {
@@ -106,6 +118,7 @@ function createChatWidget() {
   });
 
   document.getElementById("yt-doubt-close").addEventListener("click", closeChatPanel);
+  document.getElementById("yt-doubt-clear").addEventListener("click", clearChat);
 
   const input = document.getElementById("yt-doubt-input");
   document.getElementById("yt-doubt-send").addEventListener("click", sendMessage);
@@ -197,6 +210,8 @@ function setInputEnabled(enabled) {
   const send = document.getElementById("yt-doubt-send");
   if (input) input.disabled = !enabled;
   if (send) send.disabled = !enabled;
+  const clear = document.getElementById("yt-doubt-clear");
+  if (clear) clear.disabled = !enabled;
 }
 
 function finishSending() {
