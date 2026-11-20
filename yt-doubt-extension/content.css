@@ -134,12 +134,18 @@
   padding: 3px 8px;
   border-radius: 4px;
   transition: background 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+  user-select: none;
 }
 
 #yt-doubt-clear:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.2);
   border-color: rgba(255, 255, 255, 0.7);
   opacity: 1;
+}
+
+#yt-doubt-clear:active:not(:disabled) {
+  transform: translateY(1px);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 #yt-doubt-clear:focus-visible {

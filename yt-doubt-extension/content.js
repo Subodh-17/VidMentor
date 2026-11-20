@@ -42,17 +42,21 @@ function seekTo(seconds) {
 }
 
 function removeWidget() {
-  document.getElementById("yt-doubt-button")?.remove();
-  document.getElementById("yt-doubt-panel")?.remove();
+  document.querySelectorAll("#yt-doubt-button, #yt-doubt-panel").forEach((el) => el.remove());
   isSending = false;
 }
 
-function clearChat() {
+function clearChat(e) {
+  if (e) {
+    if (typeof e.preventDefault === "function") e.preventDefault();
+    if (typeof e.stopPropagation === "function") e.stopPropagation();
+  }
   if (isSending) return;
-  const messagesDiv = document.getElementById("yt-doubt-messages");
+  const panel = e?.currentTarget?.closest?.("#yt-doubt-panel") || document.getElementById("yt-doubt-panel");
+  const messagesDiv = panel?.querySelector("#yt-doubt-messages") || document.getElementById("yt-doubt-messages");
   if (!messagesDiv) return;
   messagesDiv.innerHTML = "";
-  addMessage(INITIAL_GREETING, "bot");
+  addMessage(INITIAL_GREETING, "bot", messagesDiv);
 }
 
 function closeChatPanel() {
@@ -70,7 +74,7 @@ function closeChatPanel() {
 function createChatWidget() {
   if (!document.body) return;
   if (location.pathname !== "/watch") return; // only on video pages
-  if (document.getElementById("yt-doubt-button")) return;
+  if (document.getElementById("yt-doubt-button") || document.getElementById("yt-doubt-panel")) return;
 
   const button = document.createElement("button");
   button.id = "yt-doubt-button";
@@ -117,11 +121,14 @@ function createChatWidget() {
     triggerIndexing();
   });
 
-  document.getElementById("yt-doubt-close").addEventListener("click", closeChatPanel);
-  document.getElementById("yt-doubt-clear").addEventListener("click", clearChat);
+  const clearBtn = panel.querySelector("#yt-doubt-clear");
+  const closeBtn = panel.querySelector("#yt-doubt-close");
+  const sendBtn = panel.querySelector("#yt-doubt-send");
+  const input = panel.querySelector("#yt-doubt-input");
 
-  const input = document.getElementById("yt-doubt-input");
-  document.getElementById("yt-doubt-send").addEventListener("click", sendMessage);
+  closeBtn?.addEventListener("click", closeChatPanel);
+  clearBtn?.addEventListener("click", clearChat);
+  sendBtn?.addEventListener("click", sendMessage);
 
   input.addEventListener("keydown", (e) => {
     // Stop YouTube shortcuts (space, k, f, m, etc.) from firing while typing
@@ -167,8 +174,8 @@ function formatAnswerWithTimestampLinks(text) {
   });
 }
 
-function addMessage(text, sender) {
-  const messagesDiv = document.getElementById("yt-doubt-messages");
+function addMessage(text, sender, container = null) {
+  const messagesDiv = container || document.getElementById("yt-doubt-messages");
   if (!messagesDiv) return null;
 
   const msg = document.createElement("div");
@@ -206,12 +213,15 @@ function removeTypingIndicator() {
 }
 
 function setInputEnabled(enabled) {
-  const input = document.getElementById("yt-doubt-input");
-  const send = document.getElementById("yt-doubt-send");
-  if (input) input.disabled = !enabled;
-  if (send) send.disabled = !enabled;
-  const clear = document.getElementById("yt-doubt-clear");
-  if (clear) clear.disabled = !enabled;
+  document.querySelectorAll("#yt-doubt-input").forEach((input) => {
+    input.disabled = !enabled;
+  });
+  document.querySelectorAll("#yt-doubt-send").forEach((send) => {
+    send.disabled = !enabled;
+  });
+  document.querySelectorAll("#yt-doubt-clear").forEach((clear) => {
+    clear.disabled = !enabled;
+  });
 }
 
 function finishSending() {
@@ -245,18 +255,20 @@ function sendMessage() {
     chrome.runtime.sendMessage(
       { type: "CHAT", video_id: videoId, query, current_time: currentTime },
       (response) => {
-        const lastError = chrome.runtime.lastError; // read it to avoid console warnings
-        finishSending();
+        try {
+          const lastError = chrome.runtime.lastError; // read it to avoid console warnings
+          if (lastError) {
+            addMessage("⚠️ Connection to the extension was lost. Please refresh this page and try again.", "bot");
+            return;
+          }
 
-        if (lastError) {
-          addMessage("⚠️ Connection to the extension was lost. Please refresh this page and try again.", "bot");
-          return;
-        }
-
-        if (response && response.success) {
-          addMessage(response.answer, "bot");
-        } else {
-          addMessage(`⚠️ ${response?.error || "Something went wrong. Try again."}`, "bot");
+          if (response && response.success) {
+            addMessage(response.answer, "bot");
+          } else {
+            addMessage(`⚠️ ${response?.error || "Something went wrong. Try again."}`, "bot");
+          }
+        } finally {
+          finishSending();
         }
       }
     );
