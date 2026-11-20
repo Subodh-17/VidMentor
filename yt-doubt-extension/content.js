@@ -1,4 +1,5 @@
 const INITIAL_GREETING = "Hi! Ask me anything about this video and I'll answer using its transcript.";
+const REQUEST_TIMEOUT_MS = 25000;
 let isSending = false;
 const indexedVideos = new Set();
 
@@ -251,11 +252,36 @@ function sendMessage() {
   setInputEnabled(false);
   showTypingIndicator();
 
+  let completed = false;
+  let timerId = null;
+
+  const handleDone = (callback) => {
+    if (completed) return;
+    completed = true;
+    if (timerId !== null) {
+      clearTimeout(timerId);
+      timerId = null;
+    }
+    try {
+      if (getVideoId() === videoId) {
+        callback();
+      }
+    } finally {
+      finishSending();
+    }
+  };
+
+  timerId = setTimeout(() => {
+    handleDone(() => {
+      addMessage("⚠️ Request timed out. The server took too long to respond. Please try again.", "bot");
+    });
+  }, REQUEST_TIMEOUT_MS);
+
   try {
     chrome.runtime.sendMessage(
       { type: "CHAT", video_id: videoId, query, current_time: currentTime },
       (response) => {
-        try {
+        handleDone(() => {
           const lastError = chrome.runtime.lastError; // read it to avoid console warnings
           if (lastError) {
             addMessage("⚠️ Connection to the extension was lost. Please refresh this page and try again.", "bot");
@@ -267,15 +293,14 @@ function sendMessage() {
           } else {
             addMessage(`⚠️ ${response?.error || "Something went wrong. Try again."}`, "bot");
           }
-        } finally {
-          finishSending();
-        }
+        });
       }
     );
   } catch (err) {
     // Happens when the extension was reloaded while this tab stayed open
-    finishSending();
-    addMessage("⚠️ Extension was updated. Please refresh this page and try again.", "bot");
+    handleDone(() => {
+      addMessage("⚠️ Extension was updated. Please refresh this page and try again.", "bot");
+    });
   }
 }
 
