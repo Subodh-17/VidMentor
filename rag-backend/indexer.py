@@ -4,12 +4,8 @@ from chunking import chunk_transcript
 from transcript import get_transcript
 from cache import video_cache, save_to_disk, load_from_disk, get_cache_key
 
-def build_index_for_video(video_id, raw_transcript=None):
-    if raw_transcript is not None:
-        transcript = raw_transcript
-        error = None
-    else:
-        transcript, error = get_transcript(video_id)
+def build_index_for_video(video_id):
+    transcript, error = get_transcript(video_id)
     if transcript is None:
         return None, error
     chunks = chunk_transcript(transcript)
@@ -21,20 +17,19 @@ def build_index_for_video(video_id, raw_transcript=None):
     return (chunks, index), None
 
 
-def get_or_build_index(video_id, raw_transcript=None):
+
+def get_or_build_index(video_id):
     cache_key = get_cache_key(video_id)
     if cache_key in video_cache:
         return video_cache[cache_key], None
-    if raw_transcript is None:
-        disk_result = load_from_disk(video_id)
-        if disk_result:
-            video_cache[cache_key] = disk_result
-            return disk_result, None
-    result, error = build_index_for_video(video_id, raw_transcript=raw_transcript)
+    disk_result = load_from_disk(video_id)
+    if disk_result:
+        video_cache[cache_key] = disk_result
+        return disk_result, None
+    result, error = build_index_for_video(video_id)
     if result is None:
         return None, error
     chunks, index = result
-    if raw_transcript is None:
-        save_to_disk(video_id, chunks, index)
+    save_to_disk(video_id, chunks, index)
     video_cache[cache_key] = (chunks, index)
     return (chunks, index), None

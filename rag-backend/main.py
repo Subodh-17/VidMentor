@@ -67,11 +67,7 @@ def _session_key(req: ChatRequest) -> tuple[str, str]:
 # ---------- Endpoints ----------
 @app.post("/index")
 def index_video(req: IndexRequest):
-    if req.transcript:
-        raw_transcript = [s.model_dump() for s in req.transcript]
-        result, error = get_or_build_index(req.video_id, raw_transcript)
-    else:
-        result, error = get_or_build_index(req.video_id)
+    result, error = get_or_build_index(req.video_id)
     if result is None:
         return {"success": False, "error": error}
     return {"success": True, "message": "Video indexed and ready."}
@@ -79,11 +75,7 @@ def index_video(req: IndexRequest):
 
 @app.post("/chat")
 def chat(req: ChatRequest):
-    if req.transcript:
-        raw_transcript = [s.model_dump() for s in req.transcript]
-        result, error = get_or_build_index(req.video_id, raw_transcript)
-    else:
-        result, error = get_or_build_index(req.video_id)
+    result, error = get_or_build_index(req.video_id)
     if result is None:
         return {"success": False, "error": error}
     chunks, index = result
